@@ -1,0 +1,421 @@
+---
+title: "Reporte sobre datos de Educación."
+author: "Information Management Work Group"
+organization: "ACNUR ECUADOR QUITO"
+runtime: shiny
+output: html_document
+---
+
+En el documento que se presenta a continuación se hace un análisis con los datos del sector educativo proporcionados por el Ministerio de Educación; para determinar la concentración de los estudiantes extranjeros y la posible ubicación de las familias de estos estudiantes, debido a que la asignación de cupos se realiza en base al sector donde vive.
+
+
+```{r librerias, include=FALSE}
+library("dplyr")
+library("openxlsx")
+library("ggplot2")
+library("tidyverse")
+library("plyr")
+library ("readxl")
+library("xlsxjars")
+library("wesanderson")
+library("summarytools")
+library("knitr")
+library("pander")
+library("plotrix")
+##gráficos
+library("ggrepel")
+library("plotly")
+library("gganimate")
+library("gapminder")
+library("ggExtra")
+library("ggcorrplot")
+library("quantmod")
+library("ggthemes")
+```
+
+**ESTUDIANTES MATRICULADOS POR NACIONALIDAD.**
+
+De acuerdo a registros obtenidos de los períodos escolares el número de estudiantes Ecuatorianos en la presentación de inclusión educativa (UNESCO-UNICEF, 2019, p.4 ) el número de estudiantes ecuatorianos ha disminuido no de manera considerable, mientras que el registro de estudiantes de otros países de América sigue aumentando, es importante mencionar que en los dos primeros periodos escolares los estudiantes venezolanos están incluidos en esta categoría, del período 2017-2018 a 2018 -2019 aumentó casi 9 veces más. 
+
+```{r matriculados, echo=FALSE, warning=FALSE, error=FALSE}
+#matTOT<-read.xlsx("F:\\ACNUR\\EDUCACION\\Analisis datos Salud y Educacion ACNUR\\EstudiantesMatriculados.xlsx")
+matTOT<-read.xlsx("E:\\ACNUR\\EDUCACION\\Analisis datos Salud y Educacion ACNUR\\EstudiantesMatriculados.xlsx")
+matTOT[is.na(matTOT)] <- "null"
+
+nacionalidades<-matTOT%>%
+  select(PERIODO,AMIE,PARROQUIA=par_descri,NombreInstitucion,Nacionalidad,CANTON=can_descri,Estudiantes,Sexo,REGIMEN=RegimenEscolar)%>%
+  #filter(PERIODO=="2017-2018 Inicio")%>%
+  group_by(Nacionalidad)
+nacional<-aggregate(Estudiantes~PERIODO+Nacionalidad,data = nacionalidades,sum)
+
+Periodo<-rep(c("2015-2016","2016-2017","2017-2018","2018-2019"),each=6)
+Nacionalidad<-rep(c("Ecuatoriana","Colombiana","Peruana","Otros países de América","Otros Continentes","Venezolana"),times=4)
+Estudiantes<-c(4582829,10745,1223,10007,13138,0,4571418,9219,1149,10435,12545,0,4392807,7922,1144,13104,11919,1197,4351518,7860,1205,11423,11274,10730)
+periodos<-data.frame(Periodo,Nacionalidad,Estudiantes)
+DT::renderDataTable(periodos)
+```
+
+
+```{r nacionalidad, echo=FALSE, warning=FALSE, error=FALSE}
+
+nacionalfin<-nacional[nacional$Nacionalidad!="Ecuatoriana", ]
+
+nacb<-nacionalfin%>%
+  filter(PERIODO=="2017-2018 Inicio")
+pie(nacb$Estudiantes, clockwise=TRUE, main="Número de estudiantes matriculados 2017-2018",labels = nacb$Nacionalidad)
+
+nacb1<-nacionalfin%>%
+  filter(PERIODO=="2018-2019 Inicio")
+pie(nacb1$Estudiantes, clockwise=TRUE, main="Número de estudiantes matriculados 2018-2019",labels = nacb$Nacionalidad)
+
+```
+
+Para el período 2017-2018 se puede ver que no se encuentra detallado el registro del número de venezolanos, pues está incluido dentro de "Otros países de América", no hay variabilidad considerable entre los dos años. En el último año lectivos se puede observar la mayor afluencia de estudiantes con otra nacionalidad, son los que tienen nacionalidad venezolana, en proporción general no llega al 5%, sino al 0.22% del número de estudiantes totales.
+
+
+**ESTUDIANTES MATRICULADOS POR REGIÓN.**
+
+```{r region, echo=FALSE}
+reg<-aggregate(Estudiantes~PERIODO+REGIMEN,data = nacionalidades,sum)
+DT::renderDataTable(reg)
+```
+
+
+**ESTUDIANTES ECUATORIANOS MATRICULADOS POR PROVINCIA.**
+
+```{r ecuatorianos, echo=FALSE}
+ecu<-matTOT%>%
+  select(PERIODO,PROVINCIA=prv_descri,CANTON=can_descri,Nacionalidad,Estudiantes)%>%
+  filter(Nacionalidad=="Ecuatoriana")%>%
+  group_by(PERIODO)
+ecup<-aggregate(Estudiantes~PERIODO+PROVINCIA+CANTON+Nacionalidad,data = ecu,sum)
+DT::renderDataTable(ecup)
+
+```
+
+**ESTUDIANTES MATRICULADOS DIFERENTES NACIONALIDADES.**
+
+A continuación, se detallan las provincias donde hay mayor afluencia de estudiantes de otras nacionalidades diferentes a la ecuatoriana para los dos últimos años escolares.
+
+
+```{r otraNacionalidad, echo=FALSE}
+##base matriculados sin ecuatorianos
+matriculados<-matTOT%>%
+  filter(Nacionalidad!="Ecuatoriana")
+#matriculados<-read.xlsx("C:\\Users\\TOBARLOP\\OneDrive - UNHCR\\Documents\\Analisis datos Salud y Educacion ACNUR\\EstudiantesMatriculadosOtraNacionalidad.xlsx")
+matriculados[is.na(matriculados)] <- "null"
+
+##filtro por provincia
+
+EstProv<-matriculados%>%
+     select(PERIODO,AMIE, NombreInstitucion, PROVINCIA=prv_descri,Nacionalidad,CANTON=can_descri, PARROQUIA=par_descri,ESTUDIANTES=Estudiantes)%>%
+     group_by(PERIODO)
+
+EstProvfil<-aggregate(ESTUDIANTES~PROVINCIA+PERIODO,data = EstProv,sum)
+
+
+ggplot(EstProvfil, aes(x=PROVINCIA, y=ESTUDIANTES,fill=PERIODO))+
+  stat_summary(fun.y = sum, geom = "bar")+
+  facet_wrap(~PERIODO,ncol = 2)+
+  coord_flip()+
+    guides(fill=FALSE)+theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "gray90"),
+    panel.grid.minor = element_line(colour = "gray95"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "gray30", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 12, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 10),
+    axis.ticks = element_line(colour = "gray90")
+  )
+```
+
+
+La provincia de Pichincha tiene mayor número de estudiantes de otras nacionalidades diferente a la nacionalidad ecuatoriana; para el período 2017-2018 se tuvo un total de 12203 estudiantes matriculados y 16542 para el período 2018-2019. Además, en las provincias de Guayas, Azuay, Manabí, El Oro, Tungurahua, Santo Domingo de los Tsáchilas, Sucumbíos, Imbabura y Loja.
+
+En los dos períodos de estudio, vamos a determinar cuales son los principales 10 cantones con mayor número de estudiantes de otras nacionalidades.
+
+
+```{r extranjeros_canton, echo=FALSE}
+EONC<-aggregate(ESTUDIANTES~CANTON+PERIODO,data = EstProv,sum)
+eonc<-EONC[with(EONC,order(-EONC$ESTUDIANTES)),]
+
+DT::renderDataTable(eonc)
+
+```
+
+
+Realizando un cálculo de percentiles se pudo determinar cuáles han sido las mayores concentraciones de estudiantes por cantones, el 50% de estos estudiantes se concentró en la ciudad de Loja e Ibarra para los dos períodos correspondientes, sin embargo vemos que Ibarra para el período 2018-2019 tiene una mayor concentración de estudiantes de otras nacionalidades, mientras que el 75% de ellos estuvo concentrado en la ciudad de Cuenca; Guayaquil y Quito son las que mayor concentración de estudiantes tienen.
+
+Ahora vamos a desgregar para estudiantes Colombianos, Venezolanos para conocer los cantones e instituciones donde más se han concentrado en el último período escolar 2018-2019.
+
+**Estudiantes venezolanos matriculados por cantón**
+
+```{r ven, echo=FALSE}
+estven<-matriculados%>%
+  select(PERIODO,can_descri,Nacionalidad,Estudiantes,PARROQUIA=par_descri)%>%
+  filter(Nacionalidad=="Venezolana")%>%
+  group_by(can_descri)
+EV<-aggregate(Estudiantes~can_descri+PERIODO,data = estven,sum)
+EV<-EV[with(EV,order(-EV$Estudiantes)),]
+##selecciono las 10 primeras para graficar
+EV10<-EV[1:9,]
+ggplot(EV10, aes(x=can_descri, y=Estudiantes, fill=can_descri)) + geom_bar(stat="identity") +
+    scale_fill_brewer()+guides(fill=FALSE)+ geom_text(aes(y=Estudiantes, label = Estudiantes), position = position_dodge(width = 0.9), size = 4, vjust=1, hjust=0.5,col="black") +theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "gray90"),
+    panel.grid.minor = element_line(colour = "gray95"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "gray30", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 0, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 8),
+    axis.ticks = element_line(colour = "gray90")
+  )
+
+
+```
+
+Vemos que dentro de los 9 cantones que más estudiantes venezolanos tiene; además vemos que en 40 parroquias del país, superan la media de estudiantes matriculados que es 75; se encuentran detallan los cantones y algunas parroquias Guayaquil (Tarqui, Ximena), Quito (Belisario Quevedo, la Concepción, Kennedy, Calderón, otras), Manta (Manta, Tarqui), Rumiñahui (Sangolquí), Ibarra (Sagrario), Lago Agrio (Nueva Loja), Riobamba (Lizarzaburu), Baños de agua santa, Durán (Eloy Alfaro).
+
+```{r parr-ven, echo=FALSE}
+EVi<-aggregate(Estudiantes~PERIODO+can_descri+PARROQUIA,data = estven,sum)
+EVi<-EVi[with(EVi,order(-EVi$Estudiantes)),]
+DT::renderDataTable(EVi)
+
+```
+
+**Estudiantes colombianos matriculados por cantón**
+
+```{r colombianos, echo=FALSE}
+estcol<-matriculados%>%
+  select(PERIODO, can_descri,Nacionalidad,Estudiantes,PARROQUIA=par_descri)%>%
+  filter(PERIODO=="2018-2019 Inicio",Nacionalidad=="Colombiana")%>%
+  group_by(can_descri)
+EC<-aggregate(Estudiantes~can_descri+PERIODO,data = estcol,sum)
+EC<-EC[with(EC,order(-EC$Estudiantes)),]
+EC10<-EC[1:9,]
+
+ggplot(EC10, aes(x=can_descri, y=Estudiantes, fill=can_descri)) + geom_bar(stat="identity") +
+    scale_fill_manual(values=c("#CC6666", "#9999CC", "#66CC99", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00"))+guides(fill=FALSE)+ geom_text(aes(y=Estudiantes, label = Estudiantes), position = position_dodge(width = 0.9), size = 4, vjust=1, hjust=0.5,col="black")+theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "gray90"),
+    panel.grid.minor = element_line(colour = "gray95"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "gray30", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 0, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 4),
+    axis.ticks = element_line(colour = "gray90")
+  )
+
+```
+
+De manera similar, se hizo un análisis para estudiantes de nacionalidad Colombiana, tenemos los 9 principales cantones la mayoría en la frontera. Al calcular la media obtuvimos 51 estudiantes matriculados, tenemos 34 parroquias donde la media las mismas que se encuentran detalladas con algunas de sus parroquias Lago Agrio (Nueva Loja, General Farfán, Pacayacu), Guayaquil (Tarqui, Ximena), San Lorenzo (San Lorenzo), Tulcán (Tulcán, González Suárez, Julio Andrade), Ibarra (Sagrario, San Franciso), Shushufindi, Quito (Calderón, Tumbaco, Iñaquito, Kennedy, otros), Santo Domingo (Río Verde, Santo domingo de los colorados), Joya de los Sachas, Esmeraldas (5 de agosto, Simón Plata Torres), San Pedro de Huaca.
+
+
+```{r parr-col, echo=FALSE}
+ECi<-aggregate(Estudiantes~PERIODO+can_descri+PARROQUIA,data = estcol,sum)
+ECi<-ECi[with(ECi,order(-ECi$Estudiantes)),]
+DT::renderDataTable(ECi)
+```
+
+**ESTUDIANTES MATRICULADOS POR GÉNERO.**
+
+Para el período 2018-2019, vamos a identificar según el género cuantos estudiantes han sido matriculados.
+
+El número de estudiantes de género masculino predonmina en los estudiantes ecuatorianos (50.4%) y el 49.6% son de género femenino, para la nacionalidad colombiana 50.2% y 49.8% respectivamente, en otros países de América el 50.3% son hombres y el 49.7% mujeres, de nacionalidad peruana cuenta con el 50.5% estudiantes de género masculino y 49.5% femenino. A diferencia de la nacionalidad venezolana el 51.6% de estudiantes son mujeres y el 48.4% hombres y el 51.2% de estudiantes de otros continentes son de género femenino y el 48.8% de género femenino.
+
+```{r genero, echo=FALSE}
+ecu<-nacionalidades%>%
+  filter(PERIODO=="2018-2019 Inicio",Nacionalidad=="Ecuatoriana")
+
+n2<-nacionalidades%>%
+  filter(PERIODO=="2018-2019 Inicio",Nacionalidad!="Ecuatoriana")
+#n1<-aggregate(Estudiantes~Sexo+Nacionalidad,data = n2,sum)
+
+gE<- ggplot(ecu, aes(x=Sexo, y=Estudiantes, fill=Sexo))+ geom_bar(stat="identity")+scale_fill_manual(values=c("#999999","#E69F00"))+guides(fill=FALSE)+theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "gray90"),
+    panel.grid.minor = element_line(colour = "gray95"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "gray30", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 0, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 4),
+    axis.ticks = element_line(colour = "gray90")
+  )
+gE
+
+g<- ggplot(n2, aes(x= Nacionalidad , y=Estudiantes,fill=Nacionalidad)) + geom_bar(stat="identity")
+ gn<-g +coord_flip() + facet_wrap(~Sexo)+scale_fill_manual(values=c("#ABDDDE","#FF0000","#00A08A","#F2AD00","#ECCBAE","#5BBCD6"))+guides(fill=FALSE)+theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "gray90"),
+    panel.grid.minor = element_line(colour = "gray95"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "gray30", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 0, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 4),
+    axis.ticks = element_line(colour = "gray90")
+  )
+ gn
+
+```
+
+
+
+**ESTUDIANTES MATRICULADOS POR INSTITUCIÓN EDUCATIVA Y GRADO ESCOLAR**
+
+```{r instituciones, echo=FALSE}
+ins<-aggregate(Estudiantes~PERIODO+PARROQUIA+AMIE+NombreInstitucion+CANTON+Nacionalidad,data =nacionalidades,sum)
+ins<-ins[with(ins,order(-ins$Estudiantes)),]
+DT::renderDataTable(ins)
+
+```
+
+Para el período 2017-2018 y 2018-2019, vemos que entre las 10 primeras instituciones educativas se encuentran en su mayoría en el cantón Quito, en el Colegio Consejo Provincial de Pichincha hay un mayor número de matriculados ecuatorianos seguidamente el Instituto Nacional Mejia. 
+En particular, los estudiantes de nacionalidad colombiana en los períodos 2017-2018 y 2018-2019 se encuentran una mayor concentración en instituciones educativas en Tulcán, Lago Agrio, San Lorenzo considerando que son ciudades fronterizas, nos indica o nos da una idea de que han decidido establecerse en estas ciudades. En cambio, con los estudiantes de nacionalidad venezonala se encuentra una mayor concentración en instuciones en Quito, Manta e Ibarra.
+
+```{r Grado, echo=FALSE}
+grad<-matTOT%>%
+  select(PERIODO,Grado,Estudiantes)%>%
+  filter(PERIODO=="2017-2018 Inicio")
+grad<-aggregate(Estudiantes~PERIODO+Grado,data = grad,sum)
+grad$Estudiantes=grad$Estudiantes*(-1)
+grad2<-matTOT%>%
+  select(PERIODO,Grado,Estudiantes)%>%
+  filter(PERIODO=="2018-2019 Inicio")%>%
+  group_by(Grado)
+grad2<-aggregate(Estudiantes~PERIODO+Grado,data = grad2,sum)
+final<-rbind(grad,grad2)
+
+brks <- seq(-330000, 330000, 110000)
+lbls = paste0(as.character(c(seq(330, 0, -110), seq(110, 330,110))), "mil")
+lbls1 = c(seq(330, 0, -110), seq(110, 330, 110))
+g17 <- ggplot(final, aes(x = Grado, y = Estudiantes, fill = PERIODO)) +
+  geom_bar(stat = "identity", width = .6) +
+  scale_y_continuous(breaks = brks, labels = lbls) +
+  coord_flip() +
+  labs(title="Estudiantes matriculadoss por grado escolar") +
+  theme_tufte() +
+  theme(plot.title = element_text(hjust = .5), axis.ticks = element_blank()) +
+  scale_fill_brewer(palette = "Dark2")
+ggplotly(g17)
+```
+
+
+**VULNERABILIDADES.**
+
+A continuación se muestra algunas de las vulnerabilidades que han estado presentes en el período 2017-2018 que en cuanto se conozcan para el período 2018-2019 se pueda identificar 
+
+```{r vulnerabilidad, echo=FALSE}
+#matvulner<-read.xlsx("F:\\ACNUR\\Analisis datos Salud y Educacion ACNUR\\EDUCACIONFILTRO\\matriculadosVulnerabilidad.xlsx")
+matvulner<-read.xlsx("C:\\Users\\TOBARLOP\\OneDrive - UNHCR\\Documents\\Analisis datos Salud y Educacion ACNUR\\EDUCACIONFILTRO\\matriculadosVulnerabilidad.xlsx")
+
+v<-matvulner%>%
+  select(PROVINCIA=prv_descri,Nacionalidad,TieneDiscapacidad,Discapacidad,Nivel,DescomposicionMatricula,ESTUDIANTES=Nro_estudiantes)%>%
+  group_by(Nacionalidad)
+vV<-aggregate(ESTUDIANTES~Nacionalidad+TieneDiscapacidad+Discapacidad+Nivel+DescomposicionMatricula,data = v,sum)
+v1<-vV%>%
+  filter(Nacionalidad!="Ecuatoriana")
+
+# Gráfico de barras para una variable numérica y categórica
+ggplot(vV, aes(Nacionalidad, ESTUDIANTES, fill = DescomposicionMatricula)) +
+  geom_bar(stat = "identity") + 
+  labs(title="Número de estudiantes por descomposición de matrícula", 
+       subtitle="Distribución por nacionalidad ecuatoriana.")
+
+ggplot(v1, aes(Nacionalidad, ESTUDIANTES, fill = DescomposicionMatricula)) +
+  geom_bar(stat = "identity") + 
+  labs(title="Número de estudiantes por descomposición de matrícula", 
+       subtitle="Distribución por otras nacionalidades.")
+
+```
+
+De acuerdo a las gráficas, vemos que la mayoría de estudiantes de todas las nacionalidades han aprobado en año escolar, se presenta la información detallada:
+
+1) **Promovidos.**
+
+    Ecuatorianos 93.6%.
+    
+    Colombianos 89.2%.
+    
+    Otros continentes 94.7%.
+    
+    Otros países de América 94.1%.
+    
+    Peruanos 91.5%.
+    
+    Deconocido 96.5%.
+    
+2) **No Promovidos.**
+    
+    Ecuatorianos 1.6%
+    
+    Colombianos 2.3%.
+    
+    Otros continentes 1.3%.
+    
+    Otros países de América 0.8%.
+    
+    Peruanos 1.6%.
+    
+    Deconocido 0.3%.
+    
+3) **Desertores.**
+    
+    Ecuatorianos 1.9%
+    
+    Colombianos 6.1%.
+    
+    Otros continentes 2.3%.
+    
+    Otros países de América 2.9%.
+    
+    Peruanos 3.8%.
+    
+    Deconocido 3.1%.
+
+Y la diferencia restanteson estudiantes que no han sido registrados; además, se identifica mayor grado de decersión que estudiantes no promovidos o no registrados
+
+```{r discapacidad, echo=FALSE}
+d<-aggregate(ESTUDIANTES~PROVINCIA+Nacionalidad+TieneDiscapacidad+Discapacidad,data=v,sum)
+
+dis<-d%>%
+  select(PROVINCIA,TieneDiscapacidad,Discapacidad,ESTUDIANTES)%>%
+  filter(TieneDiscapacidad=="Si")
+
+
+ggplot(dis, aes(PROVINCIA, ESTUDIANTES, fill = Discapacidad)) +
+  geom_bar(stat = "identity") + 
+  labs(title="Estudiantes con discapacidd", 
+       subtitle="Tipos de Discapacidad")+coord_flip()
+```
+
+En base a la información dada en el inicio del reporte como Pichincha, Guayas, Manabí, Azuay, El Oro son las provincias que más estudiantes tienen, el número de estudiantes con discapacidad es de la misma forma mayor en estas provincias y de entre las discapacidades que se dan con mayor frecuencia son la intelectual, motriz y visual. A continuación se presenta información más detallada:
+
+```{r datosDiscapacidad, echo=FALSE}
+disP<-aggregate(ESTUDIANTES~PROVINCIA+TieneDiscapacidad+Discapacidad,data = dis,sum)
+DT::renderDataTable(disP)
+```
+
+**CONCLUSIONES.**
+
+1) El saldo positivo de la población venezolana en movilidad continúa aumentando, y se encuentran más en las provincias de Pichincha, Guayas, Azuay, Manabí, El Oro.
+Mientras que la población colombiana se ha mantenido en las provincias del norte del país Carchi, Esmeraldas, Sucumbíos.
+
+2) Actualmente hay moviizaciones en más territorios de las diferentes provincias del país y también en zonas no delimitadas.
+
+3) En proporción al número total de estudiantes, los de nacionalidad venezolana tienen un 0.22% de participación; se encuentran matriculados en su gran mayoría en Quito, seguido de Guayaquil, Cuenca, Manta.
+
+4) El mayor número de estudiantes se da en los grados escolares como 1ro, 2do, 6to, 7mo, 8vo de básica y 1ro de bachillerato. 
+
+5) La mayor parte de estudiantes ha sido promovido al siguiente año escolar pero también se identifica mayor número de desertores.
+
+6) Se identifica mayor discapacidad intelectual en las provincias de Pichincha, Guayas, Azuay, Manabí, El Oro y motriz en las dos primeras provincias mencionadas anteriormente y en Manabí.
+
+**REFERENCIAS**
+
+1) Ministerio de Educación. 2019. Información estudiantes matriculados período 2017-2018 y 2019-2019.
+
+2) UNICEF-UNESCO. 2019. Presentación Inclusión Educativa.
+
+
+
