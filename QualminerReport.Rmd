@@ -1,0 +1,240 @@
+---
+title: "Qualminer Report"
+author: "Information Management WG"
+date: "12/10/2019"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r librerias, include=FALSE}
+library("shiny")
+library("dplyr")
+library("ggplot2")
+library("tidyr")
+library("tidyverse")
+library("rgdal") #readOGR
+library("RColorBrewer")
+library("classInt")
+library("sf")
+library("classInt")
+library("leaflet")
+library("ggrepel")
+library("openxlsx")
+library("fs")
+library("readxl")
+library("gridExtra")
+library("knitr")
+library("plyr")
+library("reshape2")
+
+##MAPA CANTONES
+shp_ecu<-st_read("L:\\Information Management\\QualminerReport\\cantones\\cantones.shp")
+shp_ecu=shp_ecu[shp_ecu$dpa_provin!=20,]
+shp_ecu=shp_ecu[shp_ecu$dpa_provin!=90,]
+
+##BASE MEDIOS DE VIDA
+cac<-read.xlsx("L:\\Information Management\\QualminerReport\\Bases trabajar\\2019_12 Medios de vida.xlsx")
+
+names(cac)<-c("dpa_canton","dpa_descan","Access_labor_certifications","Approach_private_company_employability","Training_gastronomy","Business_incubator_training","Food_Handling_Training","Care_for_people_training","Gastronomy_training","Seed_capital_to_women","MGD_seed_capital","VGB_seed_capital","Free_Courses","First_time_employability","Treceability_employability","First_time_entrepreneurship","Entrepreneurship_monitoring","Entrepreneurship_School","Local_market_study","Excel_for_entrepreneurs","Fair_entrepreneurship","Productive_financing","Family_relatives","Legalization_incident_titles","Incidence_for_training_processes","Financial_system_Incidence","MIES_HIAS_UNHCR_pilot_project","Sensitization_population_mh","Entrepreneurs_Workshop","Financial_education_workshop","Employability_Workshop","Positive_sales_workshop","Social_networking_digital_marketing_workshops","InterWork_state_APS")
+shp_ecutot<-left_join(shp_ecu,cac,by= "dpa_canton")
+
+##Acceso EDUACIÓN
+ed1<-read.xlsx("L:\\Information Management\\QualminerReport\\Bases trabajar\\2019_12_Acceso a la educación.xlsx",1)
+names(ed1)<-c("dpa_canton","dpa_descan","Community_integration_activities(HIAS)","Dissemination_mechanisms_homologation_titles(HIAS)","Strengthening_children's_space(HIAS)","School_integration(HIAS)","School_stay(HIAS)","Promotion_rights_Day_girl(HIAS)","School_leveling_project(HIAS)","Community_projects(HIAS)","Reference_small_NNcases(HIAS)","Family_tracking(HIAS)","Regular_workshops_right_access(HIAS)","Interangencial_state_academy_Work(HIAS)","Sanitary_Infrastructure_Maintenance(NRC)","School_kits(OIM)")
+
+ed3<-read.xlsx("L:\\Information Management\\QualminerReport\\Bases trabajar\\2019_12_Acceso a la educación.xlsx",3)
+names(ed3)<-c("dpa_canton","dpa_descan","ADRA","DE_Quitumbe","DE_LAgrio","MIES","RAOA_SUR","SigloXXI","UARTES","UNICEF","UTN","UE_Isaac_Acosta")
+
+
+###WASH###
+wash<-read.xlsx("L:\\Information Management\\QualminerReport\\Bases trabajar\\2019_12_Wash.xlsx",4)
+```
+
+The report shown below was made with some records of the activities carried out by the partners in the month of October. This was considered Livelihoods, Access to Education and Wash.
+
+**LIVELIHOODS**
+
+In Livelihoods, UNHCR has been a very important actor because of the activities that have been carried out in the different cities of the country where offices and partners are mainly located, since they have been of vital help.
+Below are the maps where the activities that have been carried out most frequently have been identified and the cities where they were carried out.
+
+
+```{r echo=FALSE}
+a<-ggplot(shp_ecutot)+
+  geom_sf(aes(fill= First_time_employability)) +
+  theme_bw()+theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "white"),
+    panel.grid.minor = element_line(colour = "white"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "white", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 12, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 10),
+    axis.ticks = element_line(colour = "white")
+  )
+
+b<-ggplot(shp_ecutot)+
+  geom_sf(aes(fill= Treceability_employability)) +
+  theme_bw()+theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "white"),
+    panel.grid.minor = element_line(colour = "white"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "white", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 12, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 10),
+    axis.ticks = element_line(colour = "white")
+  )
+
+
+c<-ggplot(shp_ecutot)+
+  geom_sf(aes(fill= First_time_entrepreneurship)) +
+  theme_bw()+theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "white"),
+    panel.grid.minor = element_line(colour = "white"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "white", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 12, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 10),
+    axis.ticks = element_line(colour = "white")
+  )
+
+d<-ggplot(shp_ecutot)+
+  geom_sf(aes(fill= Entrepreneurship_monitoring)) +
+  theme_bw()+theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "white"),
+    panel.grid.minor = element_line(colour = "white"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "white", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 12, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 10),
+    axis.ticks = element_line(colour = "white")
+  )
+
+grid.arrange(a,c)
+grid.arrange(d,b)
+```
+
+In this case, the activities that were carried out are "Employability for the first time" in the city of Cuenca, more of these activities were carried out, "Employability by repeatability" carried out for some cities such as Esmeraldas, Guayaquil, Lago Agrio, Quito, Santo Domingo and Tulcán, however, for "Entrepreneurship for the first time" and "Entrepreneurship monitoring" we see that there are some cities where these activities have been carried out.
+
+
+```{r echo=FALSE}
+####OTRAS CATEGORÍAS
+e<-ggplot(shp_ecutot)+
+  geom_sf(aes(fill=Financial_system_Incidence)) +
+  theme_bw()+theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "white"),
+    panel.grid.minor = element_line(colour = "white"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "white", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 12, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 10),
+    axis.ticks = element_line(colour = "white")
+  )
+
+f<-ggplot(shp_ecutot)+
+  geom_sf(aes(fill= Entrepreneurs_Workshop)) +
+  theme_bw()+theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "white"),
+    panel.grid.minor = element_line(colour = "white"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "white", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 12, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 10),
+    axis.ticks = element_line(colour = "white")
+  )
+
+
+g<-ggplot(shp_ecutot)+
+  geom_sf(aes(fill= Financial_education_workshop)) +
+  theme_bw()+theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "white"),
+    panel.grid.minor = element_line(colour = "white"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "white", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 12, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 10),
+    axis.ticks = element_line(colour = "white")
+  )
+
+h<-ggplot(shp_ecutot)+
+  geom_sf(aes(fill= InterWork_state_APS)) +
+  theme_bw()+theme(
+    panel.background = element_rect(fill = "white", color="gray70"),
+    panel.grid.major = element_line(colour = "white"),
+    panel.grid.minor = element_line(colour = "white"),
+    plot.title = element_text(size = 18, face = 'bold', colour = "white", hjust=0.5, vjust=0),
+    axis.title.x = element_text(size = 12, vjust=-0.5),
+    axis.title.y = element_text(size = 12, vjust=1),
+    axis.text = element_text(size = 10),
+    axis.ticks = element_line(colour = "white"))
+
+grid.arrange(e,f)
+grid.arrange(g,h)
+```
+
+Other of the main activities that have been carried out are "Financial system impact" in Quito, mostly also in other cities of the country, "Entrepreneurs workshop" in Ibarra and other cities, "Employability workshop" in Tulcán and some cities and finally "Interagency work state academy private sector" was carried out mainly in Cuenca, and also in Ibarra, Santo Domingo and Tulcán. 
+
+**Access Education.**
+
+In Access Education several activities have been carried out, for a better visualization, in these the partners that have participated are HIAS, NRC, IOM. 
+The activities carried out in some cities of the country are shown below, identifying how many activities were carried out in each of them.
+
+```{r echo=FALSE}
+ed1<-select(ed1,-dpa_canton)
+ed1<-ed1[1:11,]
+
+educt <- melt(ed1, id.vars = "dpa_descan")
+
+ggplot(educt, aes(dpa_descan,variable)) +
+  geom_tile(aes(fill = value), color = "white") +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  ylab("ACTIVITIES") +
+  xlab("CANTONS") +
+  theme(legend.title = element_text(size = 10),
+        legend.text = element_text(size = 12),
+        plot.title = element_text(size=16),
+        axis.title=element_text(size=14,face="bold"),
+        axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(fill = "Number of Activities")
+```
+
+It can be seen that the activity for access to education that has been most carried out is Interagencial_state_academy_work, mainly in the city of Guayaquil, followed by Lago Agrio.
+
+One of the partners such as HIAS, when implementing some of the activities for access to education, has worked with some institutions in the education sector, then we will see with which institutions they have worked more.
+
+```{r echo=FALSE}
+ed3c<-ed3[1:11,]
+DT::renderDataTable(ed3c)
+```
+
+
+
+```{r echo=FALSE}
+ed3<-select(ed3,-dpa_canton,-dpa_descan)
+ed3<-ed3[1:11,]
+
+par(cex.axis=0.45,cex.lab=0.5,cex.sub=0.7,las=1)
+SE<-barplot(sort(colSums(ed3,na.rm = TRUE)),col=c("lavenderblush","lavenderblush","lavenderblush","lavenderblush","lavenderblush","lavenderblush","lavenderblush","pink","pink","indianred1") ,main = "",axes = F,)
+
+```
+
+
+**WASH**
+
+Wash, we will have the information on the activities in a narrative way that were carried out, classified by city, partners and the number of times each of them has been carried out.
+
+```{r echo=FALSE}
+wash<-select(wash,-dpa_canton)
+DT::renderDataTable(wash)
+```
+
+You can see that in some cities there are three activities, in some only one and in others none, but only once.
